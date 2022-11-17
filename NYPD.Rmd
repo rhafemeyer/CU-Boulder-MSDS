@@ -1,0 +1,86 @@
+---
+title: "NYPD Shooting Incident Data"
+output: pdf_document
+date: "2022-10-28"
+---
+
+```{r packages}
+library(tidyverse)
+```
+
+## Introduction
+
+In this paper, we will introduce and analyze NYPD shooting incident data through visualizations in R.
+By introducing the data as a link to a CSV file, this is reproducible across platforms.
+
+We will eliminate the Incident Key, Jurisdiction Code, Location Description, Statistical Murder Flag, X and Y Coordinates, and the Longitude-Latitude Pair. Most of these are not provided an explanation with the dataset, but none are necessary to our intended analysis.
+
+Racial data has also been excluded. The racial data included in the original dataset is based on an outdated pretense that has been rejected by the scientific community. Please read an explanation [**here**](https://bioanth.org/about/position-statements/aapa-statement-race-and-racism-2019/) and pursue other resources for your own edification as necessary.
+
+In many situations, we saw NA data. This has been omitted, as it is not clear if this data means that the metric was unknown or if it was simply not recorded. Unknown values were allowed, as this may offer unique conclusions. Also excluded were outliers or nonsensical data, for instance, an age group of "1020" that included a handful of incidents. 
+
+We will explore the following types of data: (1) time, (2) location, (3) age, and (4) gender.
+
+```{r import}
+df <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD")
+df <- subset(df, select = -c(`INCIDENT_KEY`, `JURISDICTION_CODE`, `LOCATION_DESC`, `STATISTICAL_MURDER_FLAG`, `X_COORD_CD`, `Y_COORD_CD`, `Lon_Lat`, `PERP_RACE`, `VIC_RACE`))
+df$OCCUR_DATE <- as.Date(df$OCCUR_DATE, "%m/%d/%Y")
+summary(df)
+head(df)
+```
+
+## Time Data
+
+This dataset includes two different sets of time data: the date and time of day the incident occurred. Date data reveals what we have heard on the news that last few years, that violent crime was down from 2013 to 2020, but spiked following the onset of the COVID-19 pandemic.
+
+Time data shows that shootings were most likely after 6pm and before 5am, with peak times being an order of magnitude greater than during the day.
+
+```{r time}
+ggplot(df, aes(x = OCCUR_DATE)) + geom_histogram()
+ggplot(df, aes(x = OCCUR_TIME)) + geom_histogram(bins = 48)
+```
+
+## Location Data
+
+Next, we evaluate location data. The dataset included numerous different types of location data; however, borough and long-lat data proved most illuminating for those unfamiliar with NYPD precincts and domain-specific coordinates.
+
+When looking at borough data, we see that Brooklyn and the Bronx have the most shootings, followed by Queens, Manhattan, and Staten Island far behind. Those familiar with New York City know that Brooklyn is the most populated borough, followed closely by Queens, then Manhattan and the Bronx, with Staten Island being significantly less populated. Manhattan is the most densely populated by a significant margin, and Staten Island the least densely populated by a similar margin. 
+
+Without knowing any additional information, we can make several observations. We could observe that Brooklyn has the most shootings but is the most populated borough. Similarly, we could see that Staten Island has comparatively few shootings, but the population is sparse. We could see that the Bronx has significantly more shootings than the similarly populated and significantly more dense population of Manhattan. Further investigation would likely reveal socioeconomic models that could predict these outcomes.
+
+We then provide a visualization of latitudinal and longitudinal data, that, for those familiar with New York City, well compliments our borough visualization. Staten Island is off to the left, Brooklyn in the center, Manhattan in the upper center, Bronx to the upper right and Queens to the right.
+
+```{r location}
+ggplot(df, aes(x = BORO)) + geom_bar()
+plot(df$Longitude, df$Latitude, xlab = 'Longitude', ylab= 'Latitude')
+```
+
+## Age Data
+
+Age data revealed little surprising conclusions. Most shooters and victims were aged 18-45, with the age of many shooters unknown. There may be room for further analysis of this data, with location or socioeconomic analysis.
+
+```{r age}
+ggplot(na.omit(df) %>% group_by(PERP_AGE_GROUP) %>% filter(n()>50), aes(x = PERP_AGE_GROUP)) + geom_bar()
+ggplot(na.omit(df) %>% group_by(VIC_AGE_GROUP) %>% filter(n()>50), aes(x = VIC_AGE_GROUP)) + geom_bar()
+```
+
+## Gender Data
+
+Gender data was equally unsurprising. Men were much more likely to be either a shooter or the victim; further, women were much more likely to be a victim than they were to be a perpetrator. Perhaps one surprising insight is that the gender of the shooter was much more likely to be known than the age of the shooter; although intuitive, this perhaps reveals insight into how this data was collected.
+
+```{r gender}
+ggplot(na.omit(df), aes(x = PERP_SEX)) + geom_bar()
+ggplot(na.omit(df) %>% group_by(VIC_SEX) %>% filter(n()>50), aes(x = VIC_SEX)) + geom_bar()
+```
+
+## Discussion of Bias
+
+This data has very little information about how data was obtained. Racial data, in particular, is very concerning because it is not clear how this was determined, whether this data was self-reported or merely observed or guessed by officers or another party. We can guess that much of the perpetrator data was assumed, since many more ages are unknown than gender, we can surmise that not all perpetrators with data were apprehended. Further, there is ambiguity between whether the sex of the shooter or victim is biological sex, legal sex, gender identity or an assumption somewhere in between.
+
+Even location data may have a significant exposure to bias. It is not stated how this data was collected, so it may differ between whether the data was collected at crime scenes, medical facilities or any number of locations.
+
+Lastly, my personal bias. In particular, I excluded racial data because of my own understanding of race and the way the racial data was presented.  As referenced previously, the AABA has stated there is no physical, genetic or otherwise biological way of determining race because it is not a biological reality. That being said, the AABA made it clear race is a socioeconomic reality, so it is important that we use data to recognize these disparities. There is a great likelihood that there existed important socioeconomic conclusions in this data; however, it is likely that there are better tools such as location and income data, that can more reliably demonstrate socioeconomic disparities than arbitrary racial assignments. 
+
+```{r session}
+sessionInfo()
+```
